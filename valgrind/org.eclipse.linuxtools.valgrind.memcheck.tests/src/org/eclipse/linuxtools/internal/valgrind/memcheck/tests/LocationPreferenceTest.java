@@ -22,7 +22,7 @@ import org.eclipse.linuxtools.internal.valgrind.launch.ValgrindLaunchPlugin;
 
 public class LocationPreferenceTest extends TestCase {
 
-	private ValgrindCommand command = new ValgrindCommand() {
+	private ValgrindCommand command = new ValgrindCommand(null) {
 		protected void readIntoBuffer(StringBuffer out, Process p) throws IOException {
 			// Simulate not finding Valgrind in the user's PATH
 			throw new IOException();
@@ -36,9 +36,8 @@ public class LocationPreferenceTest extends TestCase {
 	public void testManualLocationNoPATH() throws Exception {
 		// Set a preference for a manual location
 		ValgrindPlugin.getDefault().getPreferenceStore().setValue(ValgrindPreferencePage.VALGRIND_PATH, "/path/to/valgrind");
-		
-		ValgrindLaunchPlugin.getDefault().setValgrindCommand(command);
-		
+		ValgrindPlugin.getDefault().getPreferenceStore().setValue(ValgrindPreferencePage.VALGRIND_ENABLE, true);
+
 		ValgrindLaunchPlugin.getDefault().getValgrindLocation();
 	}
 }

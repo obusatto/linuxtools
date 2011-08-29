@@ -10,55 +10,52 @@
  *******************************************************************************/
 package org.eclipse.linuxtools.internal.valgrind.memcheck.tests;
 
+import java.io.IOException;
+
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.debug.core.ILaunchConfiguration;
 import org.eclipse.debug.core.ILaunchConfigurationWorkingCopy;
-import org.eclipse.linuxtools.internal.valgrind.launch.ValgrindLaunchPlugin;
+import org.eclipse.linuxtools.internal.valgrind.core.ValgrindCommand;
 import org.eclipse.linuxtools.internal.valgrind.launch.ValgrindOptionsTab;
+import org.eclipse.linuxtools.internal.valgrind.tests.ValgrindStubCommand;
+import org.eclipse.linuxtools.internal.valgrind.tests.ValgrindTestLaunchDelegate;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
-import org.osgi.framework.Version;
 
 public class MinVersionTest extends AbstractMemcheckTest {
-	private static final Version VER_3_2_1 = new Version(3, 2, 1);
-	private Version verSave;
+	private static ValgrindTestLaunchDelegate delegate_3_2_1 = new ValgrindTestLaunchDelegate() {
+		@Override
+		protected ValgrindCommand getValgrindCommand(ILaunchConfiguration config) {
+			return new ValgrindStubCommand() {
+				@Override
+				public String whichVersion(String whichValgrind) throws IOException {
+					return "valgrind-3.2.1"; //$NON-NLS-1$
+				}
+			};
+		}
+	};
 	
 	@Override
 	protected void setUp() throws Exception {
 		super.setUp();
 		proj = createProjectAndBuild("basicTest"); //$NON-NLS-1$
-		
-		saveVersion();
 	}
 
-	private void saveVersion() throws CoreException {
-		verSave = ValgrindLaunchPlugin.getDefault().getValgrindVersion();
-		ValgrindLaunchPlugin.getDefault().setValgrindVersion(VER_3_2_1);
-	}
-	
 	@Override
 	protected void tearDown() throws Exception {
-		restoreVersion();
-		
 		deleteProject(proj);
 		super.tearDown();
 	}
 
-	private void restoreVersion() {
-		ValgrindLaunchPlugin.getDefault().setValgrindVersion(verSave);
-	}
-		
 	public void testLaunchBadVersion() throws Exception {
 		// Put this back so we can make a valid config
-		restoreVersion();
 		ILaunchConfiguration config = createConfiguration(proj.getProject());
 		// For some reason we downgraded
-		saveVersion();
 		
 		CoreException ce = null;		
 		try {
-			doLaunch(config, "testDefaults"); //$NON-NLS-1$
+			doLaunch(config, "testDefaults", delegate_3_2_1); //$NON-NLS-1$
 		} catch (CoreException e) {
 			ce = e;
 		}
@@ -69,7 +66,17 @@ public class MinVersionTest extends AbstractMemcheckTest {
 	public void testTabsBadVersion() throws Exception {
 		Shell testShell = new Shell(Display.getDefault());
 		testShell.setLayout(new GridLayout());
-		ValgrindOptionsTab tab = new ValgrindOptionsTab();
+		ValgrindOptionsTab tab = new ValgrindOptionsTab() {
+			@Override
+			protected ValgrindCommand getValgrindCommand(ILaunchConfiguration config) {
+				return new ValgrindStubCommand() {
+					@Override
+					public String whichVersion(String whichValgrind) throws IOException {
+						return "valgrind-3.2.1"; //$NON-NLS-1$
+					}
+				};
+			}
+		};
 		
 		ILaunchConfiguration config = getLaunchConfigType().newInstance(null, getLaunchManager()
 				.generateLaunchConfigurationName(

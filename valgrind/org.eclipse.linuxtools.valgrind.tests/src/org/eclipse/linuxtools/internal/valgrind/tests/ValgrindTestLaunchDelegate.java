@@ -25,12 +25,12 @@ public class ValgrindTestLaunchDelegate extends ValgrindLaunchConfigurationDeleg
 	protected static final String ERROR_CODE_FILE = ".errorCode"; //$NON-NLS-1$
 	
 	@Override
-	protected ValgrindCommand getValgrindCommand() {
+	protected ValgrindCommand getValgrindCommand(ILaunchConfiguration config) {
 		if (!ValgrindTestsPlugin.RUN_VALGRIND) {
 			return new ValgrindStubCommand();
 		}
 		else {
-			return super.getValgrindCommand();
+			return super.getValgrindCommand(config);
 		}
 	}
 

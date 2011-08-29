@@ -80,6 +80,7 @@ public class ValgrindLaunchConfigurationDelegate extends AbstractCLaunchDelegate
 	protected ILaunch launch;
 	protected IProcess process;
 	protected String launchStr;
+	protected IPath valgrindLocation;
 	protected Version valgrindVersion; // null if not used
 
 	public void launch(ILaunchConfiguration config, String mode,
@@ -97,7 +98,7 @@ public class ValgrindLaunchConfigurationDelegate extends AbstractCLaunchDelegate
 		this.config = config;
 		this.launch	= launch;
 		try {
-			command = getValgrindCommand();
+			command = getValgrindCommand(config);
 
 			// remove any output from previous run
 			ValgrindUIPlugin.getDefault().resetView();
@@ -105,10 +106,8 @@ public class ValgrindLaunchConfigurationDelegate extends AbstractCLaunchDelegate
 			getPlugin().setCurrentLaunchConfiguration(null);
 			getPlugin().setCurrentLaunch(null);
 			
-			// find Valgrind binary if not already done
-			IPath valgrindLocation = getPlugin().getValgrindLocation();
-			// also ensure Valgrind version is usable
-			valgrindVersion = getPlugin().getValgrindVersion();
+			findValgrindLocation();
+			findValgrindVersion();
 
 			monitor.worked(1);
 			IPath exePath = CDebugUtils.verifyProgramPath(config);
@@ -196,6 +195,25 @@ public class ValgrindLaunchConfigurationDelegate extends AbstractCLaunchDelegate
 		}
 	}
 
+	protected ValgrindCommand getValgrindCommand(ILaunchConfiguration config ) {
+		return new ValgrindCommand(config);
+	}
+
+	private void findValgrindLocation() throws CoreException {
+		if (command == null)
+			return;
+		valgrindLocation = ValgrindLaunchPlugin.getValgrindLocation(command);
+	}
+
+	private void findValgrindVersion() throws CoreException {
+		if (command == null)
+			return;
+
+		if (valgrindLocation == null)
+			findValgrindLocation();
+		valgrindVersion = ValgrindLaunchPlugin.getValgrindVersion(command, valgrindLocation);
+	}
+
 	protected IValgrindMessage[] parseLogs(IPath outputPath) throws IOException, CoreException {
 		List<IValgrindMessage> messages = new ArrayList<IValgrindMessage>();
 		
@@ -265,10 +283,6 @@ public class ValgrindLaunchConfigurationDelegate extends AbstractCLaunchDelegate
 
 	protected IProcess createNewProcess(ILaunch launch, Process systemProcess, String programName) {
 		return DebugPlugin.newProcess(launch, systemProcess, renderProcessLabel(programName));
-	}
-
-	protected ValgrindCommand getValgrindCommand() {
-		return getPlugin().getValgrindCommand();
 	}
 
 	protected ValgrindLaunchPlugin getPlugin() {

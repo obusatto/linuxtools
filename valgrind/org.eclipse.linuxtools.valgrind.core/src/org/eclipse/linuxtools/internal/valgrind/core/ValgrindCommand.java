@@ -17,30 +17,84 @@ import java.io.InputStream;
 import org.eclipse.cdt.utils.pty.PTY;
 import org.eclipse.cdt.utils.spawner.ProcessFactory;
 
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IConfigurationElement;
+import org.eclipse.core.runtime.IExtensionPoint;
+import org.eclipse.core.runtime.Platform;
+
+import org.eclipse.debug.core.ILaunchConfiguration;
+
+import org.eclipse.linuxtools.valgrind.core.IValgrindLocation;
+
 public class ValgrindCommand {
 	protected static final String WHICH_CMD = "which"; //$NON-NLS-1$
 	protected static final String VALGRIND_CMD = "valgrind"; //$NON-NLS-1$
+	protected static final String EXTENSION_POINT_PRIORITY = "priority"; //$NON-NLS-1$
+	protected static final String EXTENSION_POINT_CLASS = "class"; //$NON-NLS-1$
+	protected static final String EXTENSION_POINT_ID = "valgrindLocation"; //$NON-NLS-1$
 
 	protected Process process;
 	protected String[] args;
+	protected ILaunchConfiguration config;
+
+	public ValgrindCommand (ILaunchConfiguration config) {
+		this.config = config;
+	}
+
+	public ValgrindCommand () {
+		this(null);
+	}
+
+	private IConfigurationElement getHighestPriority(IConfigurationElement[] elements) {
+		if (elements.length == 0)
+			return null;
+
+		int priority = Integer.parseInt(elements[0].getAttribute(EXTENSION_POINT_PRIORITY));
+		IConfigurationElement highest = elements[0];
+		for (int i = 1; i < elements.length; i++) {
+			int priority2 = Integer.parseInt(elements[i].getAttribute(EXTENSION_POINT_PRIORITY));
+			if (priority2 > priority) {
+				priority = priority2;
+				highest = elements[i];
+			}
+		}
+		return highest;
+	}
+
+	private String getExtensionPointLocation() {
+		IExtensionPoint ep = Platform.getExtensionRegistry().
+					getExtensionPoint(PluginConstants.CORE_PLUGIN_ID, EXTENSION_POINT_ID);
+		if (ep == null)
+			return null;
+
+		IConfigurationElement element = getHighestPriority(ep.getConfigurationElements());
+		if (element == null)
+			return null;
+
+		try {
+			return ((IValgrindLocation)element.createExecutableExtension(EXTENSION_POINT_CLASS)).getValgrindLocation(config);
+		} catch (CoreException e) {
+			return null;
+		}
+	}
 
 	public String whichValgrind() throws IOException {
-		String ret;
-		
+		// Valgrind binary location set in extension point overrides every other definition
+		String valgrindExtensionPointLocation = getExtensionPointLocation();
+		if (valgrindExtensionPointLocation != null)
+			return valgrindExtensionPointLocation;
+
 		// Valgrind binary location in preferences overrides default location
 		String valgrindPreferedPath = ValgrindPlugin.getDefault().getPreferenceStore().getString(ValgrindPreferencePage.VALGRIND_PATH);
-		if (valgrindPreferedPath.equals("")) { //$NON-NLS-1$
-			// No preference, check Valgrind exists in the user's PATH
-			StringBuffer out = new StringBuffer();
-			Process p = Runtime.getRuntime().exec(WHICH_CMD + " " + VALGRIND_CMD); //$NON-NLS-1$
-			// Throws IOException if which command is unsuccessful
-			readIntoBuffer(out, p);
-			ret = out.toString().trim();
-		}
-		else {
-			ret = valgrindPreferedPath;
-		}
-		return ret;
+		if (!valgrindPreferedPath.equals(""))
+			return valgrindPreferedPath;
+
+		// No preference, check Valgrind exists in the user's PATH
+		StringBuffer out = new StringBuffer();
+		Process p = Runtime.getRuntime().exec(WHICH_CMD + " " + VALGRIND_CMD); //$NON-NLS-1$
+		// Throws IOException if which command is unsuccessful
+		readIntoBuffer(out, p);
+		return out.toString().trim();
 	}
 	
 	/**

@@ -24,6 +24,7 @@ import org.eclipse.debug.core.ILaunchConfigurationWorkingCopy;
 import org.eclipse.debug.ui.AbstractLaunchConfigurationTab;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.linuxtools.internal.valgrind.core.LaunchConfigurationConstants;
+import org.eclipse.linuxtools.internal.valgrind.core.ValgrindCommand;
 import org.eclipse.linuxtools.valgrind.launch.IValgrindToolPage;
 import org.eclipse.osgi.util.NLS;
 import org.eclipse.swt.SWT;
@@ -93,23 +94,14 @@ public class ValgrindOptionsTab extends AbstractLaunchConfigurationTab {
 	protected Exception ex;
 	
 	private Version valgrindVersion;
+	private boolean checkVersion;
 	
 	public ValgrindOptionsTab() {
 		this(true);
 	}
 	
 	public ValgrindOptionsTab(boolean checkVersion) {
-		if (checkVersion) {
-			try {
-				valgrindVersion = getPlugin().getValgrindVersion();
-			} catch (CoreException e) {
-				ex = e;
-			}
-		}
-		else {
-			// Do not check version
-			valgrindVersion = null;
-		}
+		this.checkVersion = checkVersion;
 	}	
 
 	protected SelectionListener selectListener = new SelectionAdapter() {
@@ -469,6 +461,12 @@ public class ValgrindOptionsTab extends AbstractLaunchConfigurationTab {
 		launchConfigurationWorkingCopy = null;
 
 		try {
+			if (checkVersion) {
+				ValgrindCommand command = getValgrindCommand(configuration);
+				IPath valgrindLocation = ValgrindLaunchPlugin.getValgrindLocation(command);
+				valgrindVersion = ValgrindLaunchPlugin.getValgrindVersion(command, valgrindLocation);
+			}
+
 			tool = configuration.getAttribute(LaunchConfigurationConstants.ATTR_TOOL, LaunchConfigurationConstants.DEFAULT_TOOL);
 			int select = -1;
 			for (int i = 0; i < tools.length && select < 0; i++) {
@@ -508,6 +506,10 @@ public class ValgrindOptionsTab extends AbstractLaunchConfigurationTab {
 		}
 		getControl().setRedraw(true);
 		isInitializing = false;
+	}
+
+	protected ValgrindCommand getValgrindCommand(ILaunchConfiguration configuration) {
+		return new ValgrindCommand(configuration);
 	}
 
 	@Override

@@ -65,10 +65,6 @@ public abstract class AbstractValgrindTest extends AbstractTest {
 	@Override
 	protected void setUp() throws Exception {
 		launches = new ArrayList<ILaunch>();
-		
-		// Substitute Valgrind command line interaction
-		ValgrindLaunchPlugin.getDefault().setValgrindCommand(getValgrindCommand());
-		
 		super.setUp();
 	}
 
@@ -86,7 +82,7 @@ public abstract class AbstractValgrindTest extends AbstractTest {
 		return getLaunchManager().getLaunchConfigurationType(ValgrindLaunchPlugin.LAUNCH_ID);
 	}
 
-	protected ILaunch doLaunch(ILaunchConfiguration config, String testName) throws Exception {
+	protected ILaunch doLaunch(ILaunchConfiguration config, String testName, ValgrindTestLaunchDelegate delegate) throws Exception {
 		ILaunch launch;
 		IPath pathToFiles = getPathToFiles(testName);
 		
@@ -98,7 +94,8 @@ public abstract class AbstractValgrindTest extends AbstractTest {
 		wc.setAttribute(LaunchConfigurationConstants.ATTR_INTERNAL_OUTPUT_DIR, pathToFiles.toOSString());
 		wc.doSave();
 
-		ValgrindTestLaunchDelegate delegate = new ValgrindTestLaunchDelegate();
+		if (delegate == null)
+			delegate = new ValgrindTestLaunchDelegate();
 		launch = new Launch(config, ILaunchManager.PROFILE_MODE, null);
 		
 		DebugPlugin.getDefault().getLaunchManager().addLaunch(launch);
@@ -109,6 +106,10 @@ public abstract class AbstractValgrindTest extends AbstractTest {
 			unbindLocation(pathToFiles);
 		}
 		return launch;
+	}
+
+	protected ILaunch doLaunch(ILaunchConfiguration config, String testName) throws Exception {
+		return doLaunch(config, testName);
 	}
 
 	protected IPath getPathToFiles(String testName) throws URISyntaxException,
@@ -195,7 +196,7 @@ public abstract class AbstractValgrindTest extends AbstractTest {
 			return new ValgrindStubCommand();
 		}
 		else {
-			return new ValgrindCommand();
+			return new ValgrindCommand(null);
 		}
 	}
 

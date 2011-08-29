@@ -19,6 +19,9 @@ public class ValgrindStubCommand extends ValgrindCommand {
 	protected static final String VERSION_FILE = ".version"; //$NON-NLS-1$
 	
 	protected int exitcode;
+	public ValgrindStubCommand() {
+		super(null);
+	}
 	
 	@Override
 	public String whichValgrind() throws IOException {
